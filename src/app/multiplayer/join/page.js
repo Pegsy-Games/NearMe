@@ -309,7 +309,10 @@ export default function JoinGame() {
       {screen === 'waiting' && (
         <div className="screen" style={{ textAlign: 'center' }}>
           <h2>You&apos;re in!</h2>
-          <p style={{ color: '#666', marginBottom: 10 }}>Playing from: {address}</p>
+          <div style={{ background: '#f0f0ff', borderRadius: 8, padding: '12px 20px', marginBottom: 20 }}>
+            <span style={{ fontSize: 13, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Playing near</span>
+            <div style={{ fontSize: 18, fontWeight: 'bold', color: '#333', marginTop: 4 }}>{address}</div>
+          </div>
           <p style={{ fontSize: 18, marginBottom: 20 }}>Waiting for host to start...</p>
           <div>
             {players.map(p => (

@@ -164,7 +164,10 @@ export default function NearMe() {
             <div className="progress-bar"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
             <div className="loading-text">{loadingText}</div>
           </div>
-          <p style={{ textAlign: 'center', color: '#666', marginTop: 30 }}>Playing from: {address}</p>
+          <div style={{ background: '#f0f0ff', borderRadius: 8, padding: '12px 20px', marginTop: 30, textAlign: 'center' }}>
+            <span style={{ fontSize: 13, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Playing near</span>
+            <div style={{ fontSize: 18, fontWeight: 'bold', color: '#333', marginTop: 4 }}>{address}</div>
+          </div>
         </div>
       )}
 
