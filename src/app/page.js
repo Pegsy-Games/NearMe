@@ -150,7 +150,7 @@ export default function NearMe() {
           <input ref={addressInputRef} id="addressInput" type="text" placeholder="Start typing your address..." />
           <button disabled={!startBtnEnabled} onClick={startGame}>Let&apos;s Go!</button>
           <div style={{ marginTop: 15 }}>
-            <button onClick={() => setScreen('landing')} style={{ background: 'transparent', color: '#667eea', padding: '8px 16px', fontSize: 14 }}>
+            <button onClick={() => setScreen('landing')} style={{ background: '#f0f0f0', color: '#333', padding: '12px 24px', fontSize: 14, border: 'none', borderRadius: 8, cursor: 'pointer' }}>
               &larr; Back
             </button>
           </div>

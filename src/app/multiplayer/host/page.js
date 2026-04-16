@@ -411,7 +411,7 @@ export default function HostGame() {
           <label style={{ display: 'block', marginBottom: 10, color: '#333', fontWeight: 'bold' }}>Enter Your Address:</label>
           <input ref={addressInputRef} id="addressInput" type="text" placeholder="Start typing your address..." />
           <button disabled={!startBtnEnabled} onClick={createRoom}>Create Room</button>
-          <div style={{ marginTop: 15 }}><a href="/" style={{ color: '#667eea', fontSize: 14 }}>&larr; Back</a></div>
+          <div style={{ marginTop: 15 }}><a href="/" style={{ display: 'inline-block', background: '#f0f0f0', color: '#333', padding: '12px 24px', fontSize: 14, border: 'none', borderRadius: 8, cursor: 'pointer', textDecoration: 'none' }}>&larr; Back</a></div>
         </div>
       )}
 
@@ -495,9 +495,6 @@ export default function HostGame() {
           </div>
           <div style={{ textAlign: 'center', margin: '15px 0', color: '#666' }}>
             {answeredCount} of {expectedAnswers} answered
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <button onClick={handleReveal}>Reveal Answer</button>
           </div>
         </div>
       )}
@@ -618,7 +615,7 @@ export default function HostGame() {
           </div>
           <button onClick={playAgain}>Play Again!</button>
           <div style={{ marginTop: 10 }}>
-            <a href="/" style={{ color: '#667eea', fontSize: 14 }}>Back to Menu</a>
+            <a href="/" style={{ display: 'inline-block', background: '#f0f0f0', color: '#333', padding: '12px 24px', fontSize: 14, border: 'none', borderRadius: 8, cursor: 'pointer', textDecoration: 'none' }}>Back to Menu</a>
           </div>
         </div>
       )}

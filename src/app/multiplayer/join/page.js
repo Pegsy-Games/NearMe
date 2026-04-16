@@ -318,7 +318,7 @@ export default function JoinGame() {
             />
           </div>
           <div><button onClick={handleJoin}>Join</button></div>
-          <div style={{ marginTop: 15 }}><a href="/" style={{ color: '#667eea', fontSize: 14 }}>&larr; Back</a></div>
+          <div style={{ marginTop: 15 }}><a href="/" style={{ display: 'inline-block', background: '#f0f0f0', color: '#333', padding: '12px 24px', fontSize: 14, border: 'none', borderRadius: 8, cursor: 'pointer', textDecoration: 'none' }}>&larr; Back</a></div>
         </div>
       )}
 
