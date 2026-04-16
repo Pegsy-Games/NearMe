@@ -31,6 +31,9 @@ export default function HostGame() {
   const [revealData, setRevealData]           = useState(null);
   const [timeLeft, setTimeLeft]               = useState(TIME_LIMIT_MS / 1000);
   const [leaderboard, setLeaderboard]         = useState([]);
+  const [hostAnswered, setHostAnswered]       = useState(false);
+  const [hostSelectedIdx, setHostSelectedIdx] = useState(-1);
+  const [hostAnswerResult, setHostAnswerResult] = useState(null);
 
   const selectedPlaceRef = useRef(null);
   const addressInputRef  = useRef(null);
@@ -186,6 +189,30 @@ export default function HostGame() {
     });
 
     setAnsweredCount(0);
+    setHostAnswered(false);
+    setHostSelectedIdx(-1);
+    setHostAnswerResult(null);
+  }
+
+  async function hostSubmitAnswer(selectedOption) {
+    if (hostAnswered) return;
+    setHostAnswered(true);
+    setHostSelectedIdx(selectedOption);
+
+    const res = await fetch(`/api/rooms/${joinCode}/answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        player_id: playerId,
+        question_index: currentQuestion,
+        selected_option: selectedOption,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setHostAnswerResult(data);
+      setAnsweredCount(c => c + 1);
+    }
   }
 
   async function handleReveal() {
@@ -355,14 +382,33 @@ export default function HostGame() {
           </div>
           <h3 style={{ textAlign: 'center', margin: '15px 0', color: '#333' }}>Where is this?</h3>
           <div style={{ maxWidth: 600, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {q.options.map((opt, idx) => (
-              <div key={idx} style={{
-                padding: '15px 20px', background: '#f8f8f8', border: '2px solid #ddd',
-                borderRadius: 8, textAlign: 'center', fontSize: 16,
-              }}>
-                {opt.name} ({opt.distance}m)
-              </div>
-            ))}
+            {q.options.map((opt, idx) => {
+              const colors = ['#667eea','#e74c3c','#2ecc71','#f39c12'];
+              let bg = colors[idx];
+              let opacity = 1;
+              if (hostAnswered) {
+                opacity = 0.7;
+                if (idx === hostSelectedIdx) {
+                  bg = hostAnswerResult?.is_correct ? '#28a745' : '#dc3545';
+                  opacity = 1;
+                }
+              }
+              return (
+                <button key={idx} onClick={() => hostSubmitAnswer(idx)} disabled={hostAnswered} style={{
+                  padding: '15px 20px', background: bg, border: 'none',
+                  borderRadius: 8, textAlign: 'center', fontSize: 16,
+                  color: 'white', fontWeight: 'bold', cursor: hostAnswered ? 'default' : 'pointer',
+                  opacity, transition: 'all 0.3s',
+                }}>
+                  {opt.name} ({opt.distance}m)
+                  {hostAnswered && idx === hostSelectedIdx && (
+                    <span style={{ display: 'block', marginTop: 4, fontSize: 14 }}>
+                      {hostAnswerResult?.is_correct ? `\u2713 +${hostAnswerResult.points}` : '\u2717'}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
           <div style={{ textAlign: 'center', margin: '15px 0', color: '#666' }}>
             {answeredCount} of {players.length} answered
