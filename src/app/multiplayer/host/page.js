@@ -12,6 +12,7 @@ export default function HostGame() {
   const [screen, setScreen]         = useState('setup');
   const [errorMsg, setErrorMsg]     = useState('');
   const [nickname, setNickname]     = useState('');
+  const [hostMode, setHostMode]     = useState('player'); // 'player' | 'observer'
   const [startBtnEnabled, setStartBtnEnabled] = useState(false);
 
   // Room state
@@ -33,12 +34,15 @@ export default function HostGame() {
   const [leaderboard, setLeaderboard]         = useState([]);
   const [hostAnswered, setHostAnswered]       = useState(false);
   const [hostSelectedIdx, setHostSelectedIdx] = useState(-1);
-  const [hostAnswerResult, setHostAnswerResult] = useState(null);
 
   const selectedPlaceRef = useRef(null);
   const addressInputRef  = useRef(null);
   const channelRef       = useRef(null);
   const timerRef         = useRef(null);
+
+  const isObserver = hostMode === 'observer';
+  // How many players need to answer before auto-reveal
+  const expectedAnswers = isObserver ? players.filter(p => !p.is_host).length : players.length;
 
   // Google Places autocomplete
   useEffect(() => {
@@ -97,10 +101,10 @@ export default function HostGame() {
 
   // Auto-reveal when all players have answered
   useEffect(() => {
-    if (screen === 'question' && answeredCount > 0 && answeredCount >= players.length) {
+    if (screen === 'question' && answeredCount > 0 && answeredCount >= expectedAnswers) {
       handleReveal();
     }
-  }, [answeredCount, players.length, screen]);
+  }, [answeredCount, expectedAnswers, screen]);
 
   async function createRoom() {
     const place = selectedPlaceRef.current;
@@ -198,11 +202,10 @@ export default function HostGame() {
     setAnsweredCount(0);
     setHostAnswered(false);
     setHostSelectedIdx(-1);
-    setHostAnswerResult(null);
   }
 
   async function hostSubmitAnswer(selectedOption) {
-    if (hostAnswered) return;
+    if (hostAnswered || isObserver) return;
     setHostAnswered(true);
     setHostSelectedIdx(selectedOption);
 
@@ -217,7 +220,6 @@ export default function HostGame() {
     });
     const data = await res.json();
     if (res.ok) {
-      setHostAnswerResult(data);
       setAnsweredCount(c => c + 1);
     }
   }
@@ -308,13 +310,8 @@ export default function HostGame() {
   }
 
   async function playAgain() {
-    // Reset all player scores
     await db.from('game_players').update({ total_score: 0 }).eq('room_id', roomId);
-
-    // Delete old answers
     await db.from('game_answers').delete().eq('room_id', roomId);
-
-    // Reset room to lobby
     await db.from('game_rooms').update({
       status: 'lobby',
       questions: null,
@@ -322,14 +319,12 @@ export default function HostGame() {
       question_started_at: null,
     }).eq('id', roomId);
 
-    // Broadcast restart to all players
     channelRef.current?.send({
       type: 'broadcast',
       event: 'game:restart',
       payload: {},
     });
 
-    // Reset local state
     setQuestions([]);
     setCurrentQuestion(0);
     setAnsweredCount(0);
@@ -337,9 +332,7 @@ export default function HostGame() {
     setLeaderboard([]);
     setHostAnswered(false);
     setHostSelectedIdx(-1);
-    setHostAnswerResult(null);
 
-    // Refresh player list
     const { data } = await db.from('game_players').select('*').eq('room_id', roomId).order('created_at');
     setPlayers(data || []);
 
@@ -349,6 +342,7 @@ export default function HostGame() {
   // ── Render ─────────────────────────────────────────────
 
   const q = questions[currentQuestion];
+  const OPTION_COLORS = ['#667eea','#e74c3c','#2ecc71','#f39c12'];
 
   return (
     <div className="container">
@@ -364,6 +358,33 @@ export default function HostGame() {
             value={nickname} onChange={e => { setNickname(e.target.value); setStartBtnEnabled(!!selectedPlaceRef.current && e.target.value.trim().length > 0); }}
             style={{ width: '100%', padding: 15, fontSize: 16, border: '2px solid #ddd', borderRadius: 8, marginBottom: 20 }}
           />
+          <label style={{ display: 'block', marginBottom: 10, color: '#333', fontWeight: 'bold' }}>Host mode:</label>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+            <button
+              type="button"
+              onClick={() => setHostMode('player')}
+              style={{
+                flex: 1, padding: '12px 16px', fontSize: 14,
+                background: hostMode === 'player' ? '#667eea' : '#f0f0f0',
+                color: hostMode === 'player' ? 'white' : '#333',
+                border: '2px solid', borderColor: hostMode === 'player' ? '#667eea' : '#ddd',
+              }}
+            >
+              Play along
+            </button>
+            <button
+              type="button"
+              onClick={() => setHostMode('observer')}
+              style={{
+                flex: 1, padding: '12px 16px', fontSize: 14,
+                background: hostMode === 'observer' ? '#667eea' : '#f0f0f0',
+                color: hostMode === 'observer' ? 'white' : '#333',
+                border: '2px solid', borderColor: hostMode === 'observer' ? '#667eea' : '#ddd',
+              }}
+            >
+              Observe only
+            </button>
+          </div>
           <label style={{ display: 'block', marginBottom: 10, color: '#333', fontWeight: 'bold' }}>Enter your address:</label>
           <input ref={addressInputRef} id="addressInput" type="text" placeholder="Start typing your address..." />
           <button disabled={!startBtnEnabled} onClick={createRoom}>Create Room</button>
@@ -393,7 +414,7 @@ export default function HostGame() {
                 display: 'inline-block', margin: 5, padding: '8px 16px',
                 borderRadius: 20, background: p.avatar_color, color: 'white', fontWeight: 'bold',
               }}>
-                {p.nickname} {p.is_host && '(Host)'}
+                {p.nickname} {p.is_host && (isObserver ? '(Host - Observing)' : '(Host)')}
               </div>
             ))}
           </div>
@@ -415,7 +436,7 @@ export default function HostGame() {
         </div>
       )}
 
-      {/* Question (Host view — shows image) */}
+      {/* Question (Host view — shows image + options) */}
       {screen === 'question' && q && (
         <div className="screen">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -429,27 +450,29 @@ export default function HostGame() {
           <h3 style={{ textAlign: 'center', margin: '15px 0', color: '#333' }}>Where is this?</h3>
           <div style={{ maxWidth: 600, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {q.options.map((opt, idx) => {
-              const colors = ['#667eea','#e74c3c','#2ecc71','#f39c12'];
-              let bg = colors[idx];
+              let bg = OPTION_COLORS[idx];
               let opacity = 1;
-              if (hostAnswered) {
-                opacity = 0.7;
-                if (idx === hostSelectedIdx) {
-                  bg = hostAnswerResult?.is_correct ? '#28a745' : '#dc3545';
-                  opacity = 1;
-                }
+              if (hostAnswered && !isObserver) {
+                opacity = idx === hostSelectedIdx ? 1 : 0.5;
               }
               return (
-                <button key={idx} onClick={() => hostSubmitAnswer(idx)} disabled={hostAnswered} style={{
-                  padding: '15px 20px', background: bg, border: 'none',
-                  borderRadius: 8, textAlign: 'center', fontSize: 16,
-                  color: 'white', fontWeight: 'bold', cursor: hostAnswered ? 'default' : 'pointer',
-                  opacity, transition: 'all 0.3s',
-                }}>
+                <button
+                  key={idx}
+                  onClick={() => hostSubmitAnswer(idx)}
+                  disabled={hostAnswered || isObserver}
+                  style={{
+                    padding: '20px 15px', background: bg, border: 'none',
+                    borderRadius: 8, textAlign: 'center', fontSize: 16,
+                    color: 'white', fontWeight: 'bold',
+                    cursor: (hostAnswered || isObserver) ? 'default' : 'pointer',
+                    opacity, transition: 'all 0.3s',
+                    minHeight: 80,
+                  }}
+                >
                   {opt.name} ({opt.distance}m)
                   {hostAnswered && idx === hostSelectedIdx && (
-                    <span style={{ display: 'block', marginTop: 4, fontSize: 14 }}>
-                      {hostAnswerResult?.is_correct ? `\u2713 +${hostAnswerResult.points}` : '\u2717'}
+                    <span style={{ display: 'block', marginTop: 4, fontSize: 14, opacity: 0.9 }}>
+                      Locked in
                     </span>
                   )}
                 </button>
@@ -457,7 +480,7 @@ export default function HostGame() {
             })}
           </div>
           <div style={{ textAlign: 'center', margin: '15px 0', color: '#666' }}>
-            {answeredCount} of {players.length} answered
+            {answeredCount} of {expectedAnswers} answered
           </div>
           <div style={{ textAlign: 'center' }}>
             <button onClick={handleReveal}>Reveal Answer</button>
@@ -483,7 +506,7 @@ export default function HostGame() {
             ))}
           </div>
           <h3 style={{ marginBottom: 10 }}>Standings</h3>
-          {revealData.scores.map((p, i) => (
+          {revealData.scores.filter(p => !(isObserver && p.is_host)).map((p, i) => (
             <div key={p.id} style={{ padding: '8px 0', fontSize: 18, borderBottom: '1px solid #eee' }}>
               <strong>{i + 1}.</strong> {p.nickname} — <span style={{ color: '#667eea' }}>{p.total_score} pts</span>
             </div>
@@ -501,7 +524,7 @@ export default function HostGame() {
         <div className="screen" style={{ textAlign: 'center' }}>
           <h1>{'\uD83C\uDFC6'} Final Results!</h1>
           <div style={{ margin: '30px 0' }}>
-            {leaderboard.map((p, i) => (
+            {leaderboard.filter(p => !(isObserver && p.is_host)).map((p, i) => (
               <div key={p.id} style={{
                 padding: '15px 20px', margin: '10px auto', maxWidth: 400,
                 borderRadius: 12, background: i === 0 ? '#ffd700' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : '#f8f8f8',

@@ -203,57 +203,63 @@ export default function JoinGame() {
             <span style={{ color: '#666' }}>Q{questionIndex + 1}/{totalQuestions}</span>
             <span style={{ fontSize: 24, fontWeight: 'bold', color: timeLeft <= 5 ? '#e74c3c' : '#667eea' }}>{timeLeft}s</span>
           </div>
-          {/* Show image on player phone too */}
           {imageUrl && (
             <div style={{ textAlign: 'center', marginBottom: 15 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={imageUrl} alt="Street View" style={{ maxWidth: '100%', borderRadius: 8 }} />
             </div>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, gridAutoRows: '1fr' }}>
             {options.map((opt, idx) => (
               <button
                 key={idx}
                 onClick={() => submitAnswer(idx)}
                 style={{
-                  padding: '20px 10px', fontSize: 16, borderRadius: 12,
+                  padding: '20px 15px', fontSize: 16, borderRadius: 12,
                   background: ['#667eea','#e74c3c','#2ecc71','#f39c12'][idx],
                   border: 'none', color: 'white', fontWeight: 'bold',
                   minHeight: 80, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  textAlign: 'center',
                 }}
               >
-                {opt.name}<br /><span style={{ fontSize: 12, opacity: 0.8 }}>{opt.distance}m</span>
+                <span>{opt.name}<br /><span style={{ fontSize: 12, opacity: 0.8 }}>{opt.distance}m</span></span>
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Answered — waiting for reveal */}
+      {/* Answered — waiting for reveal (no correct/wrong shown yet) */}
       {screen === 'answered' && (
         <div className="screen" style={{ textAlign: 'center' }}>
           <h2>Answer locked in!</h2>
-          {answerResult && (
-            <div style={{ margin: '30px 0' }}>
-              <div style={{ fontSize: 48 }}>{answerResult.is_correct ? '\u2713' : '\u2717'}</div>
-              <div style={{
-                fontSize: 24, fontWeight: 'bold', marginTop: 10,
-                color: answerResult.is_correct ? '#28a745' : '#dc3545',
-              }}>
-                {answerResult.is_correct ? `+${answerResult.points} points!` : 'Wrong!'}
+          <div style={{ margin: '30px 0' }}>
+            <div style={{ fontSize: 48 }}>{'\u23F3'}</div>
+            {answerResult && (
+              <div style={{ color: '#666', marginTop: 10 }}>
+                Answered in {(answerResult.time_taken_ms / 1000).toFixed(1)}s
               </div>
-              <div style={{ color: '#666', marginTop: 5 }}>
-                {(answerResult.time_taken_ms / 1000).toFixed(1)}s
-              </div>
-            </div>
-          )}
+            )}
+          </div>
           <p style={{ color: '#666' }}>Waiting for everyone...</p>
         </div>
       )}
 
-      {/* Reveal */}
+      {/* Reveal — now show correct/wrong */}
       {screen === 'reveal' && (
         <div className="screen" style={{ textAlign: 'center' }}>
+          {answerResult && (
+            <div style={{ margin: '10px 0 20px' }}>
+              <div style={{ fontSize: 48 }}>{answerResult.is_correct ? '\u2713' : '\u2717'}</div>
+              <div style={{
+                fontSize: 24, fontWeight: 'bold',
+                color: answerResult.is_correct ? '#28a745' : '#dc3545',
+              }}>
+                {answerResult.is_correct ? `+${answerResult.points} points!` : 'Wrong!'}
+              </div>
+            </div>
+          )}
           <h2>Standings</h2>
           <div style={{ margin: '20px 0' }}>
             {revealScores.map((p, i) => (
