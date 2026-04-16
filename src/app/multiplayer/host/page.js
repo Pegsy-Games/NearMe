@@ -20,6 +20,7 @@ export default function HostGame() {
   const [joinCode, setJoinCode]     = useState('');
   const [playerId, setPlayerId]     = useState(null);
   const [players, setPlayers]       = useState([]);
+  const [address, setAddress]       = useState('');
 
   // Loading
   const [progress, setProgress]     = useState(0);
@@ -128,6 +129,7 @@ export default function HostGame() {
     setRoomId(data.room_id);
     setJoinCode(data.join_code);
     setPlayerId(data.player_id);
+    setAddress(place.formatted_address);
     setPlayers([{ id: data.player_id, nickname: nickname.trim(), avatar_color: '#667eea', is_host: true, total_score: 0 }]);
     setScreen('lobby');
   }
@@ -408,6 +410,10 @@ export default function HostGame() {
           : '';
         return (
         <div className="screen" style={{ textAlign: 'center' }}>
+          <div style={{ background: '#f0f0ff', borderRadius: 8, padding: '12px 20px', marginBottom: 20 }}>
+            <span style={{ fontSize: 13, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Playing near</span>
+            <div style={{ fontSize: 18, fontWeight: 'bold', color: '#333', marginTop: 4 }}>{address}</div>
+          </div>
           <h2>Join Code</h2>
           <div style={{ fontSize: 72, fontWeight: 'bold', color: '#667eea', letterSpacing: 8, margin: '20px 0' }}>{joinCode}</div>
           {joinUrl && (
