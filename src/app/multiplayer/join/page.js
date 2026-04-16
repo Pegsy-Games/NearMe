@@ -64,10 +64,12 @@ export default function JoinGame() {
         .select('*')
         .eq('room_id', roomId)
         .order('total_score', { ascending: false });
-      setLeaderboard((finalPlayers || []).map((p, i) => ({
-        rank: i + 1, nickname: p.nickname, total_score: p.total_score,
-        avatar_color: p.avatar_color, player_id: p.id,
-      })));
+      setLeaderboard((finalPlayers || [])
+        .filter(p => !(hostMode === 'observer' && p.is_host))
+        .map((p, i) => ({
+          rank: i + 1, nickname: p.nickname, total_score: p.total_score,
+          avatar_color: p.avatar_color, player_id: p.id,
+        })));
       setScreen('finished');
       return;
     }
@@ -101,10 +103,12 @@ export default function JoinGame() {
         if (existing) {
           setAnswerResult({ is_correct: existing.is_correct, points: existing.points_awarded, time_taken_ms: existing.time_taken_ms });
         }
-        setRevealScores((updatedPlayers || []).map(p => ({
-          player_id: p.id, nickname: p.nickname,
-          total_score: p.total_score, avatar_color: p.avatar_color,
-        })));
+        setRevealScores((updatedPlayers || [])
+          .filter(p => !(hostMode === 'observer' && p.is_host))
+          .map(p => ({
+            player_id: p.id, nickname: p.nickname,
+            total_score: p.total_score, avatar_color: p.avatar_color,
+          })));
         // Get correct answer name from stored question
         const q = room.questions[qi];
         if (q) setCorrectName(q.options[q.correct_index]?.name || '');
