@@ -20,6 +20,7 @@ export default function JoinGame() {
   const [totalQuestions, setTotalQuestions] = useState(10);
   const [options, setOptions]     = useState([]);
   const [imageUrl, setImageUrl]   = useState('');
+  const [hostMode, setHostMode]   = useState('player'); // 'player' | 'observer'
   const [startedAt, setStartedAt] = useState(null);
   const [timeLeft, setTimeLeft]   = useState(TIME_LIMIT_MS / 1000);
 
@@ -151,6 +152,7 @@ export default function JoinGame() {
         setTotalQuestions(payload.total);
         setOptions(payload.options);
         setImageUrl(payload.image_url);
+        if (payload.host_mode) setHostMode(payload.host_mode);
         setStartedAt(payload.started_at);
         setAnswerResult(null);
         setScreen('question');
@@ -287,11 +289,15 @@ export default function JoinGame() {
             <span style={{ color: '#666' }}>Q{questionIndex + 1}/{totalQuestions}</span>
             <span style={{ fontSize: 24, fontWeight: 'bold', color: timeLeft <= 5 ? '#e74c3c' : '#667eea' }}>{timeLeft}s</span>
           </div>
-          {imageUrl && (
+          {/* PvP mode: show image on player screen. Observer mode: player looks at TV */}
+          {imageUrl && hostMode === 'player' && (
             <div style={{ textAlign: 'center', marginBottom: 15 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={imageUrl} alt="Street View" style={{ maxWidth: '100%', borderRadius: 8 }} />
             </div>
+          )}
+          {hostMode === 'observer' && (
+            <p style={{ textAlign: 'center', color: '#666', marginBottom: 10 }}>Look at the screen!</p>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, gridAutoRows: '1fr' }}>
             {options.map((opt, idx) => (

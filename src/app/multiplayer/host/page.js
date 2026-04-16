@@ -196,6 +196,7 @@ export default function HostGame() {
         options: q.options.map(({ name, distance }) => ({ name, distance })),
         started_at: startedAt,
         image_url: q.image_url,
+        host_mode: hostMode,
       },
     });
 
@@ -436,8 +437,8 @@ export default function HostGame() {
         </div>
       )}
 
-      {/* Question (Host view — shows image + options) */}
-      {screen === 'question' && q && (
+      {/* Question — Observer: display-only with large image */}
+      {screen === 'question' && q && isObserver && (
         <div className="screen">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <span className="progress-text">Question {currentQuestion + 1} of {questions.length}</span>
@@ -448,33 +449,64 @@ export default function HostGame() {
             <img src={q.image_url} alt="Street View" style={{ maxWidth: 700, width: '100%', borderRadius: 8, boxShadow: '0 4px 8px rgba(0,0,0,0.2)' }} />
           </div>
           <h3 style={{ textAlign: 'center', margin: '15px 0', color: '#333' }}>Where is this?</h3>
-          <div style={{ maxWidth: 600, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ maxWidth: 600, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, gridAutoRows: '1fr' }}>
+            {q.options.map((opt, idx) => (
+              <div key={idx} style={{
+                padding: '20px 15px', background: OPTION_COLORS[idx], border: 'none',
+                borderRadius: 8, textAlign: 'center', fontSize: 16,
+                color: 'white', fontWeight: 'bold', minHeight: 80,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {opt.name} ({opt.distance}m)
+              </div>
+            ))}
+          </div>
+          <div style={{ textAlign: 'center', margin: '15px 0', color: '#666' }}>
+            {answeredCount} of {expectedAnswers} answered
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <button onClick={handleReveal}>Reveal Answer</button>
+          </div>
+        </div>
+      )}
+
+      {/* Question — Player mode: same UI as mobile players */}
+      {screen === 'question' && q && !isObserver && (
+        <div className="screen">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span className="progress-text">Question {currentQuestion + 1} of {questions.length}</span>
+            <span style={{ fontSize: 24, fontWeight: 'bold', color: timeLeft <= 5 ? '#e74c3c' : '#667eea' }}>{timeLeft}s</span>
+          </div>
+          <div style={{ textAlign: 'center', margin: '10px 0' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={q.image_url} alt="Street View" style={{ maxWidth: 700, width: '100%', borderRadius: 8, boxShadow: '0 4px 8px rgba(0,0,0,0.2)' }} />
+          </div>
+          <h3 style={{ textAlign: 'center', margin: '15px 0', color: '#333' }}>Where is this?</h3>
+          <div style={{ maxWidth: 600, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, gridAutoRows: '1fr' }}>
             {q.options.map((opt, idx) => {
-              let bg = OPTION_COLORS[idx];
-              let opacity = 1;
-              if (hostAnswered && !isObserver) {
-                opacity = idx === hostSelectedIdx ? 1 : 0.5;
-              }
+              let opacity = hostAnswered ? (idx === hostSelectedIdx ? 1 : 0.5) : 1;
               return (
                 <button
                   key={idx}
                   onClick={() => hostSubmitAnswer(idx)}
-                  disabled={hostAnswered || isObserver}
+                  disabled={hostAnswered}
                   style={{
-                    padding: '20px 15px', background: bg, border: 'none',
+                    padding: '20px 15px', background: OPTION_COLORS[idx], border: 'none',
                     borderRadius: 8, textAlign: 'center', fontSize: 16,
                     color: 'white', fontWeight: 'bold',
-                    cursor: (hostAnswered || isObserver) ? 'default' : 'pointer',
+                    cursor: hostAnswered ? 'default' : 'pointer',
                     opacity, transition: 'all 0.3s',
-                    minHeight: 80,
+                    minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
-                  {opt.name} ({opt.distance}m)
-                  {hostAnswered && idx === hostSelectedIdx && (
-                    <span style={{ display: 'block', marginTop: 4, fontSize: 14, opacity: 0.9 }}>
-                      Locked in
-                    </span>
-                  )}
+                  <span>
+                    {opt.name} ({opt.distance}m)
+                    {hostAnswered && idx === hostSelectedIdx && (
+                      <span style={{ display: 'block', marginTop: 4, fontSize: 14, opacity: 0.9 }}>
+                        Locked in
+                      </span>
+                    )}
+                  </span>
                 </button>
               );
             })}
@@ -489,9 +521,22 @@ export default function HostGame() {
       )}
 
       {/* Reveal */}
-      {screen === 'reveal' && revealData && (
+      {screen === 'reveal' && revealData && (() => {
+        const hostAnswer = !isObserver && revealData.answers.find(a => a.player_id === playerId);
+        return (
         <div className="screen" style={{ textAlign: 'center' }}>
           <h2>Answer: {revealData.correct_name}</h2>
+          {hostAnswer && (
+            <div style={{ margin: '10px 0 20px' }}>
+              <div style={{ fontSize: 48 }}>{hostAnswer.is_correct ? '\u2713' : '\u2717'}</div>
+              <div style={{
+                fontSize: 24, fontWeight: 'bold',
+                color: hostAnswer.is_correct ? '#28a745' : '#dc3545',
+              }}>
+                {hostAnswer.is_correct ? `+${hostAnswer.points_awarded} points!` : 'Wrong!'}
+              </div>
+            </div>
+          )}
           <div style={{ margin: '20px 0' }}>
             {revealData.answers.map((a, i) => (
               <div key={i} style={{
@@ -517,7 +562,8 @@ export default function HostGame() {
             </button>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Finished */}
       {screen === 'finished' && (
