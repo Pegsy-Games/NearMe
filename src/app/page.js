@@ -115,14 +115,14 @@ export default function NearMe() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 320, margin: '0 auto' }}>
             <button
               onClick={() => setScreen('start')}
-              style={{ width: '100%', padding: '18px 24px', fontSize: 18 }}
+              style={{ width: '100%', padding: '18px 24px', fontSize: 18, background: '#5C6BC0' }}
             >
               {'\uD83C\uDFAF'} Play Solo
             </button>
             <a href="/multiplayer/host" style={{ textDecoration: 'none' }}>
               <button
                 type="button"
-                style={{ width: '100%', padding: '18px 24px', fontSize: 18, background: '#764ba2' }}
+                style={{ width: '100%', padding: '18px 24px', fontSize: 18, background: '#7E57C2' }}
               >
                 {'\uD83C\uDFE0'} Host Game
               </button>
@@ -130,7 +130,7 @@ export default function NearMe() {
             <a href="/multiplayer/join" style={{ textDecoration: 'none' }}>
               <button
                 type="button"
-                style={{ width: '100%', padding: '18px 24px', fontSize: 16, background: 'transparent', color: '#667eea', border: '2px solid #667eea' }}
+                style={{ width: '100%', padding: '18px 24px', fontSize: 18, background: '#26A69A' }}
               >
                 {'\uD83D\uDD17'} Join Game
               </button>
