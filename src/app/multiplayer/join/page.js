@@ -36,9 +36,10 @@ export default function JoinGame() {
   const [playerSelectedIdx, setPlayerSelectedIdx] = useState(-1);
 
   // Reveal state
-  const [revealScores, setRevealScores] = useState([]);
-  const [correctIndex, setCorrectIndex] = useState(-1);
-  const [correctName, setCorrectName]   = useState('');
+  const [revealScores, setRevealScores]   = useState([]);
+  const [revealAnswers, setRevealAnswers] = useState([]);
+  const [correctIndex, setCorrectIndex]   = useState(-1);
+  const [correctName, setCorrectName]     = useState('');
 
   // Final leaderboard
   const [leaderboard, setLeaderboard] = useState([]);
@@ -95,23 +96,26 @@ export default function JoinGame() {
         .maybeSingle();
 
       if (isRevealed) {
-        // Reveal phase — fetch scores and show reveal screen
-        const { data: updatedPlayers } = await db
-          .from('game_players')
-          .select('*')
-          .eq('room_id', roomId)
-          .order('total_score', { ascending: false });
+        // Reveal phase — fetch scores and answers
+        const [{ data: updatedPlayers }, { data: allAnswers }] = await Promise.all([
+          db.from('game_players').select('*').eq('room_id', roomId).order('total_score', { ascending: false }),
+          db.from('game_answers').select('*, game_players(nickname)').eq('room_id', roomId).eq('question_index', qi),
+        ]);
 
         if (existing) {
           setAnswerResult({ is_correct: existing.is_correct, points: existing.points_awarded, time_taken_ms: existing.time_taken_ms });
         }
+        setRevealAnswers((allAnswers || []).map(a => ({
+          nickname: a.game_players?.nickname,
+          is_correct: a.is_correct,
+          points_awarded: a.points_awarded,
+        })));
         setRevealScores((updatedPlayers || [])
           .filter(p => !(hostMode === 'observer' && p.is_host))
           .map(p => ({
             player_id: p.id, nickname: p.nickname,
             total_score: p.total_score, avatar_color: p.avatar_color,
           })));
-        // Get correct answer name from stored question
         const q = room.questions[qi];
         if (q) setCorrectName(q.options[q.correct_index]?.name || '');
         setScreen('reveal');
@@ -222,6 +226,7 @@ export default function JoinGame() {
         clearInterval(timerRef.current);
         setCorrectIndex(payload.correct_index);
         setCorrectName(payload.correct_name || '');
+        setRevealAnswers(payload.answers || []);
         setRevealScores(payload.scores);
         setScreen('reveal');
       })
@@ -440,7 +445,22 @@ export default function JoinGame() {
               </div>
             </div>
           )}
-          <h2>Standings</h2>
+          {revealAnswers.length > 0 && (
+            <div style={{ margin: '10px 0 20px' }}>
+              {revealAnswers.map((a, i) => (
+                <div key={i} style={{
+                  display: 'inline-block', margin: 5, padding: '8px 16px',
+                  borderRadius: 20,
+                  background: a.is_correct ? '#d4edda' : '#f8d7da',
+                  color: a.is_correct ? '#28a745' : '#dc3545',
+                  fontWeight: 'bold',
+                }}>
+                  {a.nickname}: {a.is_correct ? `\u2713 +${a.points_awarded}` : '\u2717'}
+                </div>
+              ))}
+            </div>
+          )}
+          <h3 style={{ marginBottom: 10 }}>Standings</h3>
           <div style={{ margin: '20px 0' }}>
             {revealScores.map((p, i) => (
               <div key={p.player_id} style={{

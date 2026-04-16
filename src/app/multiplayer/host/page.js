@@ -275,6 +275,14 @@ export default function HostGame() {
         avatar_color: p.avatar_color,
       }));
 
+    const broadcastAnswers = (answers || [])
+      .filter(a => !(isObserver && a.player_id === playerId))
+      .map(a => ({
+        nickname: a.game_players?.nickname,
+        is_correct: a.is_correct,
+        points_awarded: a.points_awarded,
+      }));
+
     channelRef.current?.send({
       type: 'broadcast',
       event: 'question:reveal',
@@ -282,6 +290,7 @@ export default function HostGame() {
         index: currentQuestion,
         correct_index: correctIndex,
         correct_name: q.options[correctIndex].name,
+        answers: broadcastAnswers,
         scores: broadcastScores,
       },
     });
