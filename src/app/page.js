@@ -496,7 +496,7 @@ export default function NearMe() {
       {/* Start Screen */}
       {screen === 'start' && (
         <div className="screen">
-          <h1>NearMe</h1>
+          <h1>NearMe <span style={{ fontSize: 14, color: '#999', fontWeight: 'normal' }}>v0.4.0</span></h1>
           <p className="subtitle">Test your local knowledge with 10 nearby images.</p>
           <label htmlFor="addressInput" style={{ display: 'block', marginBottom: 10, color: '#333', fontWeight: 'bold' }}>
             Enter your address:
