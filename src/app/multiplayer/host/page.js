@@ -9,7 +9,7 @@ import { TIME_LIMIT_MS } from '@/lib/scoring';
 import { useConfetti } from '@/lib/useConfetti';
 
 export default function HostGame() {
-  // Screen: setup | lobby | loading | question | reveal | finished
+  // Screen: setup | lobby | loading | question | reveal | countdown | finished
   const [screenRaw, setScreenRaw]   = useState('setup');
   function setScreen(s) { setScreenRaw(s); window.scrollTo(0, 0); }
   const screen = screenRaw;
@@ -38,6 +38,7 @@ export default function HostGame() {
   const [leaderboard, setLeaderboard]         = useState([]);
   const [hostAnswered, setHostAnswered]       = useState(false);
   const [hostSelectedIdx, setHostSelectedIdx] = useState(-1);
+  const [countdownNum, setCountdownNum]       = useState(null); // 'ready' | 3 | 2 | 1
 
   const selectedPlaceRef = useRef(null);
   const addressInputRef  = useRef(null);
@@ -296,45 +297,71 @@ export default function HostGame() {
     });
 
     setScreen('reveal');
+
+    // Auto-advance: wait 4s on reveal, then countdown, then next question
+    setTimeout(() => startCountdown(), 4000);
   }
 
-  async function nextQuestion() {
-    const next = currentQuestion + 1;
-    if (next >= questions.length) {
-      // Game over
-      const { data: finalPlayers } = await db
-        .from('game_players')
-        .select('*')
-        .eq('room_id', roomId)
-        .order('total_score', { ascending: false });
-
-      setLeaderboard(finalPlayers || []);
-
-      const finalLeaderboard = (finalPlayers || [])
-        .filter(p => !(isObserver && p.is_host))
-        .map((p, i) => ({
-          rank: i + 1,
-          player_id: p.id,
-          nickname: p.nickname,
-          total_score: p.total_score,
-          avatar_color: p.avatar_color,
-        }));
-
-      channelRef.current?.send({
-        type: 'broadcast',
-        event: 'game:finished',
-        payload: { leaderboard: finalLeaderboard },
-      });
-
-      await db.from('game_rooms').update({ status: 'finished' }).eq('id', roomId);
-      setScreen('finished');
+  async function startCountdown() {
+    // If it's the last question, go straight to finished
+    if (currentQuestion >= questions.length - 1) {
+      await finishGame();
       return;
     }
 
+    setScreen('countdown');
+
+    // Broadcast countdown to players
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'game:countdown',
+      payload: {},
+    });
+
+    setCountdownNum('ready');
+    await new Promise(r => setTimeout(r, 1000));
+    setCountdownNum(3);
+    await new Promise(r => setTimeout(r, 1000));
+    setCountdownNum(2);
+    await new Promise(r => setTimeout(r, 1000));
+    setCountdownNum(1);
+    await new Promise(r => setTimeout(r, 1000));
+
+    // Advance to next question
+    const next = currentQuestion + 1;
     setCurrentQuestion(next);
     setRevealData(null);
     await broadcastQuestion(next);
     setScreen('question');
+  }
+
+  async function finishGame() {
+    const { data: finalPlayers } = await db
+      .from('game_players')
+      .select('*')
+      .eq('room_id', roomId)
+      .order('total_score', { ascending: false });
+
+    setLeaderboard(finalPlayers || []);
+
+    const finalLeaderboard = (finalPlayers || [])
+      .filter(p => !(isObserver && p.is_host))
+      .map((p, i) => ({
+        rank: i + 1,
+        player_id: p.id,
+        nickname: p.nickname,
+        total_score: p.total_score,
+        avatar_color: p.avatar_color,
+      }));
+
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'game:finished',
+      payload: { leaderboard: finalLeaderboard },
+    });
+
+    await db.from('game_rooms').update({ status: 'finished' }).eq('id', roomId);
+    setScreen('finished');
   }
 
   async function playAgain() {
@@ -597,14 +624,24 @@ export default function HostGame() {
               <strong>{i + 1}.</strong> {p.nickname} — <span style={{ color: '#667eea' }}>{p.total_score} pts</span>
             </div>
           ))}
-          <div style={{ marginTop: 20 }}>
-            <button onClick={nextQuestion}>
-              {currentQuestion === questions.length - 1 ? 'See Final Results' : 'Next Question \u2192'}
-            </button>
-          </div>
         </div>
         );
       })()}
+
+      {/* Countdown */}
+      {screen === 'countdown' && (
+        <div className="screen" style={{ textAlign: 'center' }}>
+          <div key={countdownNum} className="countdown-num" style={{
+            fontSize: countdownNum === 'ready' ? 48 : 96,
+            fontWeight: 'bold',
+            color: '#667eea',
+            margin: '60px 0',
+          }}>
+            {countdownNum === 'ready' ? 'Ready?!' : countdownNum}
+          </div>
+          <p style={{ color: '#666' }}>Question {currentQuestion + 2} of {questions.length}</p>
+        </div>
+      )}
 
       {/* Finished */}
       {screen === 'finished' && (

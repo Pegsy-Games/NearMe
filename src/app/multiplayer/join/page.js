@@ -41,6 +41,9 @@ export default function JoinGame() {
   const [correctIndex, setCorrectIndex]   = useState(-1);
   const [correctName, setCorrectName]     = useState('');
 
+  // Countdown
+  const [countdownNum, setCountdownNum] = useState(null);
+
   // Final leaderboard
   const [leaderboard, setLeaderboard] = useState([]);
 
@@ -229,6 +232,13 @@ export default function JoinGame() {
         setRevealAnswers(payload.answers || []);
         setRevealScores(payload.scores);
         setScreen('reveal');
+      })
+      .on('broadcast', { event: 'game:countdown' }, () => {
+        setScreen('countdown');
+        setCountdownNum('ready');
+        setTimeout(() => setCountdownNum(3), 1000);
+        setTimeout(() => setCountdownNum(2), 2000);
+        setTimeout(() => setCountdownNum(1), 3000);
       })
       .on('broadcast', { event: 'game:finished' }, ({ payload }) => {
         clearInterval(timerRef.current);
@@ -472,7 +482,20 @@ export default function JoinGame() {
               </div>
             ))}
           </div>
-          <p style={{ color: '#666' }}>Waiting for next question...</p>
+        </div>
+      )}
+
+      {/* Countdown */}
+      {screen === 'countdown' && (
+        <div className="screen" style={{ textAlign: 'center' }}>
+          <div key={countdownNum} className="countdown-num" style={{
+            fontSize: countdownNum === 'ready' ? 48 : 96,
+            fontWeight: 'bold',
+            color: '#667eea',
+            margin: '60px 0',
+          }}>
+            {countdownNum === 'ready' ? 'Ready?!' : countdownNum}
+          </div>
         </div>
       )}
 
