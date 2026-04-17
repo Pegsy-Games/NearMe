@@ -14,14 +14,16 @@ export function generateQuestions(locationRecords, userLat, userLng) {
     }))
     .filter(p => p.distance > 0 && p.distance <= CONFIG.radius);
 
-  const questions = [];
-  const usedIds   = new Set();
+  const questions         = [];
+  const usedIds           = new Set();
+  const usedCorrectNames  = new Set();
 
   for (let attempt = 0; attempt < 100 && questions.length < CONFIG.questionsPerGame; attempt++) {
-    const available = places.filter(p => !usedIds.has(p.id));
+    const available = places.filter(p => !usedIds.has(p.id) && !usedCorrectNames.has(p.name));
     if (!available.length) break;
 
     const correct   = available[Math.floor(Math.random() * available.length)];
+    usedCorrectNames.add(correct.name);
     const minDist   = correct.distance * 0.5;
     const maxDist   = correct.distance * 1.5;
     const usedNames = new Set([correct.name]);
