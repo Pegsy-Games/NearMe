@@ -35,6 +35,25 @@ const PLAYABLE_HIGHWAYS = [
  * @param {number} [opts.maxPerRoad=8]    - cap per road so one long road can't dominate
  * @returns {Promise<Array<{lat:number,lng:number}>>}
  */
+/**
+ * Quick pre-flight: how many playable road ways are within radius?
+ * Used by the setup screen to warn if an area looks too sparse to play.
+ * Uses `out ids;` for a small, fast response. Returns null if Overpass is
+ * unreachable (caller should treat as "unknown" and hide the warning).
+ *
+ * @param {number} lat
+ * @param {number} lng
+ * @param {number} radiusMeters
+ * @returns {Promise<number|null>}
+ */
+export async function countRoadsNearby(lat, lng, radiusMeters) {
+  const filter = PLAYABLE_HIGHWAYS.join('|');
+  const query = `[out:json][timeout:10];way(around:${radiusMeters},${lat},${lng})[highway~"^(${filter})$"];out ids;`;
+  const data = await queryOverpassWithRetries(query);
+  if (!data) return null;
+  return (data.elements || []).length;
+}
+
 export async function fetchRoadPoints(lat, lng, radiusMeters, opts = {}) {
   const { maxPoints = 100, maxPerRoad = 8 } = opts;
   const filter = PLAYABLE_HIGHWAYS.join('|');

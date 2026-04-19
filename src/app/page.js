@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from 'react';
 import { CONFIG } from '@/lib/config';
 import { generateQuestions } from '@/lib/questions';
 import { getPointsForCoordinate } from '@/lib/locations';
+import { countRoadsNearby } from '@/lib/osm';
 
 export default function NearMe() {
   const [screen, setScreen]           = useState('landing');
@@ -23,12 +24,15 @@ export default function NearMe() {
 
   const [hasPin, setHasPin]                   = useState(false);
   const [isVagueAddress, setIsVagueAddress]   = useState(false);
+  const [roadCount, setRoadCount]             = useState(null); // null = unknown / not yet queried
+  const [roadCountLoading, setRoadCountLoading] = useState(false);
 
   const selectedPlaceRef = useRef(null);
   const addressInputRef  = useRef(null);
   const mapDivRef        = useRef(null);
   const mapInstanceRef   = useRef(null);
   const markerRef        = useRef(null);
+  const circleRef        = useRef(null);
   const markerLatLngRef  = useRef(null);
 
   useEffect(() => {
@@ -37,12 +41,15 @@ export default function NearMe() {
       // later return to 'start' re-initialises against the new div.
       mapInstanceRef.current = null;
       markerRef.current      = null;
+      circleRef.current      = null;
       markerLatLngRef.current = null;
       return;
     }
     // Re-entering the start screen: clear any stale pin state.
     setHasPin(false);
     setIsVagueAddress(false);
+    setRoadCount(null);
+    setRoadCountLoading(false);
 
     if (typeof google === 'undefined') return;
     if (!addressInputRef.current) return;
@@ -94,16 +101,32 @@ export default function NearMe() {
         map: mapInstanceRef.current,
         draggable: true,
       });
+      circleRef.current = new google.maps.Circle({
+        map: mapInstanceRef.current,
+        center: position,
+        radius: CONFIG.radius,
+        strokeColor: '#5C6BC0',
+        strokeOpacity: 0.7,
+        strokeWeight: 2,
+        fillColor: '#5C6BC0',
+        fillOpacity: 0.10,
+        clickable: false,
+      });
+      circleRef.current.bindTo('center', markerRef.current, 'position');
       markerRef.current.addListener('dragend', () => {
         const p = markerRef.current.getPosition();
-        markerLatLngRef.current = { lat: p.lat(), lng: p.lng() };
+        const coords = { lat: p.lat(), lng: p.lng() };
+        markerLatLngRef.current = coords;
         setIsVagueAddress(false); // user has now been specific
+        checkRoadDensity(coords.lat, coords.lng);
       });
     } else {
       mapInstanceRef.current.setCenter(position);
       mapInstanceRef.current.setZoom(zoom);
       markerRef.current.setPosition(position);
     }
+
+    checkRoadDensity(lat, lng);
 
     // The map div grows from height:0 to 220 on the very first pin — Google
     // Maps caches the initial (empty) size and won't redraw without a resize
@@ -114,6 +137,14 @@ export default function NearMe() {
         mapInstanceRef.current.setCenter(position);
       }
     }, 80);
+  }
+
+  async function checkRoadDensity(lat, lng) {
+    setRoadCountLoading(true);
+    setRoadCount(null);
+    const count = await countRoadsNearby(lat, lng, CONFIG.radius);
+    setRoadCountLoading(false);
+    setRoadCount(count); // null if Overpass failed — banner stays hidden
   }
 
   function updateProgress(pct, text) {
@@ -266,8 +297,44 @@ export default function NearMe() {
           />
 
           {hasPin && (
-            <p style={{ fontSize: 12, color: '#888', marginBottom: 12, textAlign: 'left' }}>
-              Tip: drag the pin to adjust.
+            <p style={{ fontSize: 12, color: '#888', marginBottom: 8, textAlign: 'left' }}>
+              Tip: drag the pin to adjust. The blue circle shows the search area.
+            </p>
+          )}
+
+          {hasPin && roadCountLoading && (
+            <p style={{ fontSize: 13, color: '#888', marginBottom: 12, textAlign: 'left' }}>
+              Checking nearby streets…
+            </p>
+          )}
+
+          {hasPin && !roadCountLoading && roadCount !== null && roadCount >= 10 && (
+            <p style={{
+              fontSize: 13,
+              color: '#2e7d32',
+              background: '#e8f5e9',
+              border: '1px solid #a5d6a7',
+              padding: '6px 10px',
+              borderRadius: 6,
+              marginBottom: 12,
+              textAlign: 'left',
+            }}>
+              {roadCount} streets nearby — good to go.
+            </p>
+          )}
+
+          {hasPin && !roadCountLoading && roadCount !== null && roadCount < 10 && (
+            <p style={{
+              fontSize: 13,
+              color: '#7a5a00',
+              background: '#fff4d1',
+              border: '1px solid #e8b800',
+              padding: '6px 10px',
+              borderRadius: 6,
+              marginBottom: 12,
+              textAlign: 'left',
+            }}>
+              Only {roadCount} {roadCount === 1 ? 'street' : 'streets'} nearby — the game may be short. Try dragging the pin somewhere denser.
             </p>
           )}
 
