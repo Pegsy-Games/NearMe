@@ -14,16 +14,24 @@ export function generateQuestions(locationRecords, userLat, userLng) {
     }))
     .filter(p => p.distance > 0 && p.distance <= CONFIG.radius);
 
-  const questions         = [];
-  const usedIds           = new Set();
-  const usedCorrectNames  = new Set();
+  // A street name may be the correct answer at most this many times per
+  // 10-question game. Some repetition is fine — zero repetition can fail
+  // on smaller pools where there just aren't 10 distinct streets nearby.
+  const MAX_CORRECTS_PER_NAME = 2;
+
+  const questions           = [];
+  const usedIds             = new Set();
+  const correctNameCounts   = new Map();
 
   for (let attempt = 0; attempt < 100 && questions.length < CONFIG.questionsPerGame; attempt++) {
-    const available = places.filter(p => !usedIds.has(p.id) && !usedCorrectNames.has(p.name));
+    const available = places.filter(p =>
+      !usedIds.has(p.id) &&
+      (correctNameCounts.get(p.name) || 0) < MAX_CORRECTS_PER_NAME
+    );
     if (!available.length) break;
 
-    const correct   = available[Math.floor(Math.random() * available.length)];
-    usedCorrectNames.add(correct.name);
+    const correct = available[Math.floor(Math.random() * available.length)];
+    correctNameCounts.set(correct.name, (correctNameCounts.get(correct.name) || 0) + 1);
     const minDist   = correct.distance * 0.5;
     const maxDist   = correct.distance * 1.5;
     const usedNames = new Set([correct.name]);
