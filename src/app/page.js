@@ -287,17 +287,36 @@ export default function NearMe() {
             </div>
           )}
 
-          <div
-            ref={mapDivRef}
-            style={{
-              width: '100%',
-              height: hasPin ? 220 : 0,
-              borderRadius: 8,
-              marginBottom: hasPin ? 15 : 0,
-              overflow: 'hidden',
-              transition: 'height 0.2s ease',
-            }}
-          />
+          <div style={{
+            position: 'relative',
+            width: '100%',
+            height: 220,
+            borderRadius: 8,
+            overflow: 'hidden',
+            marginBottom: 15,
+            background: '#eef1f5',
+            border: '1px dashed #c4cbd6',
+          }}>
+            <div ref={mapDivRef} style={{ width: '100%', height: '100%' }} />
+            {!hasPin && (
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#8a93a4',
+                fontSize: 14,
+                pointerEvents: 'none',
+                textAlign: 'center',
+                padding: 12,
+              }}>
+                <div style={{ fontSize: 28, marginBottom: 6 }}>{'\uD83D\uDDFA\uFE0F'}</div>
+                <div>Pick an address — a map will appear here.</div>
+              </div>
+            )}
+          </div>
 
           {hasPin && (
             <p style={{ fontSize: 12, color: '#888', marginBottom: 8, textAlign: 'left' }}>
